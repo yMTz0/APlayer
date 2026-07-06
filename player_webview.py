@@ -11,6 +11,7 @@ navegação e os anúncios do site.
 """
 import os
 import sys
+import traceback
 import webbrowser
 
 # Força o pythonnet a usar o .NET Framework (netfx), sempre presente no Windows
@@ -18,6 +19,10 @@ import webbrowser
 # falha no .exe empacotado ("Failed to resolve Python.Runtime.Loader.Initialize");
 # fixar netfx torna a inicialização do WebView2 determinística.
 os.environ.setdefault("PYTHONNET_RUNTIME", "netfx")
+
+from utils import data_dir, setup_logging
+
+logger = setup_logging()
 
 # JS que isola o player: esconde os irmãos de cada ancestral (sem mover o
 # iframe no DOM, o que o recarregaria) e fixa o container na viewport.
@@ -79,6 +84,8 @@ def _open_in_browser(url: str):
 
 
 def run(url: str, title: str):
+    logger.info("Player: abrindo '%s' (runtime .NET=%s)", title,
+                os.environ.get("PYTHONNET_RUNTIME"))
     # Caminho primário: janela embutida via Edge WebView2 (pywebview).
     try:
         import webview
@@ -91,11 +98,17 @@ def run(url: str, title: str):
             text_select=False,
         )
         window.events.loaded += lambda: _on_loaded(window)
-        webview.start(gui="edgechromium", private_mode=False)
+        # storage_path gravável: o WebView2 precisa criar sua pasta de dados;
+        # o local padrão (ao lado do .exe, ex.: em Downloads) pode ser bloqueado.
+        wv2_dir = str(data_dir() / "webview2")
+        webview.start(gui="edgechromium", private_mode=False, storage_path=wv2_dir)
+        logger.info("Player: WebView2 embutido encerrado normalmente")
     except Exception as e:
         # Qualquer falha do WebView2 (pythonnet/clr, backend ausente, etc.):
-        # cai para o navegador padrão em vez de crashar.
-        sys.stderr.write(f"[player] WebView2 indisponível ({e}); abrindo no navegador.\n")
+        # registra o motivo COMPLETO no log e cai para o navegador padrão.
+        logger.error("Player: WebView2 FALHOU (%s: %s) — abrindo no navegador",
+                     type(e).__name__, e)
+        logger.error("Player traceback:\n%s", traceback.format_exc())
         _open_in_browser(url)
 
 

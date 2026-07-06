@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "APlayer Isolator",
+  "version": "1.0",
+  "description": "Isola o player de vídeo do goyabu e remove nav/anúncios.",
+  "content_scripts": [
+    {
+      "matches": ["*://goyabu.io/*", "*://*.goyabu.io/*"],
+      "js": ["isolate.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ]
+}

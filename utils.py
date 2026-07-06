@@ -66,24 +66,11 @@ def save_config(config: dict) -> None:
         json.dump(config, f, indent=2, ensure_ascii=False)
 
 
-def launch_player(url: str, title: str) -> subprocess.Popen:
-    """Abre o player WebView2 (Edge) como processo separado.
-
-    Funciona tanto rodando via Python quanto empacotado com PyInstaller:
-    - Frozen: o próprio executável é relançado com `--play`.
-    - Script: relança `python main.py --play`.
-    """
-    args = ["--play", url, title or "APlayer"]
-    if getattr(sys, "frozen", False):
-        cmd = [sys.executable, *args]
-    else:
-        main_py = os.path.join(os.path.dirname(os.path.abspath(__file__)), "main.py")
-        cmd = [sys.executable, main_py, *args]
-
-    creationflags = 0
-    if os.name == "nt":
-        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    return subprocess.Popen(cmd, creationflags=creationflags)
+def launch_player(url: str, title: str):
+    """Abre o episódio numa janela de app do Edge/Chrome (via player_webview).
+    Import tardio para evitar dependência circular."""
+    import player_webview
+    return player_webview.open_player(url, title or "APlayer")
 
 
 def setup_logging(level: int = logging.INFO) -> logging.Logger:

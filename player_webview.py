@@ -9,9 +9,9 @@ Carrega a página do episódio (para que o JS do site decodifique o token do
 Blogger) e injeta CSS/JS para isolar o container do player, escondendo a
 navegação e os anúncios do site.
 """
+import os
 import sys
-
-import webview
+import webbrowser
 
 # JS que isola o player: esconde os irmãos de cada ancestral (sem mover o
 # iframe no DOM, o que o recarregaria) e fixa o container na viewport.
@@ -62,18 +62,35 @@ def _on_loaded(window):
         pass
 
 
+def _open_in_browser(url: str):
+    """Fallback definitivo: abre o episódio no navegador padrão (que tem H.264).
+    Usado quando o WebView2/pywebview não inicializa (ex.: falha do pythonnet
+    no .exe empacotado)."""
+    try:
+        os.startfile(url)  # Windows: abre no handler padrão (navegador)
+    except Exception:
+        webbrowser.open(url)
+
+
 def run(url: str, title: str):
-    window = webview.create_window(
-        title=title or "APlayer",
-        url=url,
-        width=1100,
-        height=680,
-        background_color="#000000",
-        text_select=False,
-    )
-    window.events.loaded += lambda: _on_loaded(window)
-    # gui='edgechromium' força o backend WebView2 (Edge) no Windows.
-    webview.start(gui="edgechromium", private_mode=False)
+    # Caminho primário: janela embutida via Edge WebView2 (pywebview).
+    try:
+        import webview
+        window = webview.create_window(
+            title=title or "APlayer",
+            url=url,
+            width=1100,
+            height=680,
+            background_color="#000000",
+            text_select=False,
+        )
+        window.events.loaded += lambda: _on_loaded(window)
+        webview.start(gui="edgechromium", private_mode=False)
+    except Exception as e:
+        # Qualquer falha do WebView2 (pythonnet/clr, backend ausente, etc.):
+        # cai para o navegador padrão em vez de crashar.
+        sys.stderr.write(f"[player] WebView2 indisponível ({e}); abrindo no navegador.\n")
+        _open_in_browser(url)
 
 
 if __name__ == "__main__":

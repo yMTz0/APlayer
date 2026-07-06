@@ -9,7 +9,7 @@
 #    entra explicitamente em hiddenimports.
 
 import os
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_all, copy_metadata
 
 block_cipher = None
 
@@ -17,25 +17,34 @@ _datas = []
 if os.path.exists('config.json'):
     _datas.append(('config.json', '.'))
 
-# curl_cffi traz um libcurl compilado + certificados: coleta tudo (binaries,
-# datas, submódulos) para o bundle funcionar no .exe.
-_cc_datas, _cc_binaries, _cc_hidden = collect_all('curl_cffi')
-_datas += _cc_datas
+_binaries = []
+_hidden = []
+
+# Coleta completa das libs com binários/dados nativos, para o bundle ser
+# determinístico (mesmo comportamento no build local e no da nuvem):
+#  - curl_cffi: libcurl compilado (Cloudflare/TLS)
+#  - pythonnet + clr_loader: runtime .NET (Python.Runtime.dll + shims
+#    ClrLoader.dll) que o backend WebView2 do pywebview usa
+for _pkg in ('curl_cffi', 'pythonnet', 'clr_loader', 'webview'):
+    _d, _b, _h = collect_all(_pkg)
+    _datas += _d
+    _binaries += _b
+    _hidden += _h
+
+# pythonnet.load() lê a metadata do pacote para descobrir a versão do runtime.
+_datas += copy_metadata('pythonnet')
 
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=_cc_binaries,
+    binaries=_binaries,
     datas=_datas,
     hiddenimports=[
         'player_webview',
-        'webview',
         'webview.platforms.edgechromium',
-        'clr_loader',
-        'pythonnet',
-        'curl_cffi',
+        'clr',
         'PySide6.QtNetwork',
-    ] + _cc_hidden,
+    ] + _hidden,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

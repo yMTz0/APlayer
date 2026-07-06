@@ -2,12 +2,20 @@ import json
 import re
 from dataclasses import dataclass, field
 
-import requests
+# curl_cffi imita a impressão TLS/HTTP2 de um Chrome real. Necessário porque o
+# goyabu está atrás do Cloudflare, que faz fingerprinting de TLS (JA3) — o
+# `requests` puro, dependendo do OpenSSL empacotado (ex.: build do PyInstaller
+# na nuvem), recebe uma página de desafio sem os dados. Com impersonate="chrome"
+# a conexão passa de forma consistente em qualquer ambiente.
+from curl_cffi import requests as httpx
+from curl_cffi.requests.exceptions import RequestException
 from PySide6.QtCore import QThread, Signal
 
-from utils import BASE_URL, get_default_headers, setup_logging
+from utils import BASE_URL, setup_logging
 
 logger = setup_logging()
+
+IMPERSONATE = "chrome"
 
 
 @dataclass
@@ -47,13 +55,14 @@ class GoyabuScraper:
     """
 
     def __init__(self):
-        self._session = requests.Session()
-        self._session.headers.update(get_default_headers())
+        # impersonate="chrome" define User-Agent e headers de browser reais e,
+        # crucialmente, a impressão TLS do Chrome. A sessão mantém os cookies.
+        self._session = httpx.Session(impersonate=IMPERSONATE)
         self._nonce: str | None = None
 
-    def _get(self, url: str) -> str:
-        self._session.headers["User-Agent"] = get_default_headers()["User-Agent"]
-        resp = self._session.get(url, timeout=15)
+    def _get(self, url: str, referer: str | None = None) -> str:
+        headers = {"Referer": referer} if referer else None
+        resp = self._session.get(url, headers=headers, timeout=20)
         resp.raise_for_status()
         return resp.text
 
@@ -73,7 +82,7 @@ class GoyabuScraper:
             # Não conseguir o nonce = problema de conexão/site, NÃO "sem
             # resultados". Sinaliza como erro de rede para a UI avisar direito.
             logger.warning("Nonce de busca não encontrado (conexão/site)")
-            raise requests.RequestException(
+            raise RequestException(
                 "Não foi possível conectar ao site. Verifique sua internet."
             )
 
@@ -81,7 +90,7 @@ class GoyabuScraper:
             f"{BASE_URL}/wp-json/animeonline/search/",
             params={"keyword": query, "nonce": nonce},
             headers={"Referer": BASE_URL},
-            timeout=15,
+            timeout=20,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -204,7 +213,7 @@ class ScraperWorker(QThread):
                 self.error_occurred.emit(f"Tarefa desconhecida: {self._task}")
                 return
             self.results_ready.emit(result)
-        except requests.RequestException as e:
+        except RequestException as e:
             logger.error("Erro de rede: %s", e)
             self.error_occurred.emit(f"Erro de rede: {e}")
         except (json.JSONDecodeError, KeyError, IndexError) as e:

@@ -9,6 +9,7 @@
 #    entra explicitamente em hiddenimports.
 
 import os
+from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
 
@@ -16,10 +17,15 @@ _datas = []
 if os.path.exists('config.json'):
     _datas.append(('config.json', '.'))
 
+# curl_cffi traz um libcurl compilado + certificados: coleta tudo (binaries,
+# datas, submódulos) para o bundle funcionar no .exe.
+_cc_datas, _cc_binaries, _cc_hidden = collect_all('curl_cffi')
+_datas += _cc_datas
+
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=[],
+    binaries=_cc_binaries,
     datas=_datas,
     hiddenimports=[
         'player_webview',
@@ -27,9 +33,9 @@ a = Analysis(
         'webview.platforms.edgechromium',
         'clr_loader',
         'pythonnet',
-        'requests',
+        'curl_cffi',
         'PySide6.QtNetwork',
-    ],
+    ] + _cc_hidden,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

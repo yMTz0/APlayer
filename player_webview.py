@@ -13,6 +13,12 @@ import os
 import sys
 import webbrowser
 
+# Força o pythonnet a usar o .NET Framework (netfx), sempre presente no Windows
+# 10/11. A autodetecção de runtime (coreclr vs netfx) do pythonnet às vezes
+# falha no .exe empacotado ("Failed to resolve Python.Runtime.Loader.Initialize");
+# fixar netfx torna a inicialização do WebView2 determinística.
+os.environ.setdefault("PYTHONNET_RUNTIME", "netfx")
+
 # JS que isola o player: esconde os irmãos de cada ancestral (sem mover o
 # iframe no DOM, o que o recarregaria) e fixa o container na viewport.
 ISOLATE_JS = r"""

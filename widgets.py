@@ -203,6 +203,9 @@ class SearchWidget(QWidget):
         self._btn.setEnabled(enabled)
         self._btn.setText("Buscar" if enabled else "…")
 
+    def focus_input(self):
+        self._input.setFocus()
+
 
 class _PosterCard(QFrame):
     """Base para cards com poster/thumbnail + título."""

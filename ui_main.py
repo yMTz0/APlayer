@@ -301,6 +301,7 @@ class MainWindow(QMainWindow):
     #  Busca
     # ------------------------------------------------------------------
     def _on_search(self, query: str):
+        self._last_query = query
         self._status.set_message(f"Buscando '{query}'…")
         self._search.set_enabled(False)
         self._worker.configure(ScraperWorker.Task.SEARCH, query=query).start()
@@ -331,12 +332,19 @@ class MainWindow(QMainWindow):
             self._add_section(f"Resultados ({len(results)})", cards, AnimeCard.POSTER.width())
             self._status.set_message(f"{len(results)} anime(s) encontrado(s)")
         else:
-            lbl = QLabel("Nenhum resultado encontrado.")
-            lbl.setFont(QFont("Segoe UI", 13))
+            q = getattr(self, "_last_query", "")
+            msg = (f"Nenhum resultado para “{q}”.\n\n"
+                   "Dica: o site cataloga os animes pelo nome em japonês (romaji).\n"
+                   "Tente o título original — ex.: “Kimetsu no Yaiba” em vez de “Demon Slayer”,\n"
+                   "ou “Shingeki no Kyojin” em vez de “Attack on Titan”.")
+            lbl = QLabel(msg)
+            lbl.setFont(QFont("Segoe UI", 12))
             lbl.setStyleSheet(f"color: {TEXT_SECONDARY};")
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self._home_layout.addStretch()
             self._home_layout.addWidget(lbl)
-            self._status.set_message("Nenhum resultado", is_error=True)
+            self._home_layout.addStretch()
+            self._status.set_message("Nenhum resultado — tente o nome em japonês", is_error=True)
         self._stack.setCurrentWidget(self._home_page)
 
     # ------------------------------------------------------------------
@@ -434,6 +442,12 @@ class MainWindow(QMainWindow):
         self._library.toggle_favorite(anime)
         state = "adicionado aos" if self._library.is_favorite(anime.url) else "removido dos"
         self._status.set_message(f"'{anime.title}' {state} favoritos")
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not getattr(self, "_focused_once", False):
+            self._focused_once = True
+            self._search.focus_input()
 
     def closeEvent(self, event):
         # Encerra o player e para a thread de scraping antes do teardown do Qt.

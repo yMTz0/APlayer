@@ -70,8 +70,12 @@ class GoyabuScraper:
     def search_anime(self, query: str) -> list[AnimeInfo]:
         nonce = self._ensure_nonce()
         if not nonce:
-            logger.warning("Nonce de busca não encontrado")
-            return []
+            # Não conseguir o nonce = problema de conexão/site, NÃO "sem
+            # resultados". Sinaliza como erro de rede para a UI avisar direito.
+            logger.warning("Nonce de busca não encontrado (conexão/site)")
+            raise requests.RequestException(
+                "Não foi possível conectar ao site. Verifique sua internet."
+            )
 
         resp = self._session.get(
             f"{BASE_URL}/wp-json/animeonline/search/",

@@ -89,12 +89,20 @@ def launch_player(url: str, title: str) -> subprocess.Popen:
 def setup_logging(level: int = logging.INFO) -> logging.Logger:
     logger = logging.getLogger("aplayer")
     if not logger.handlers:
-        handler = logging.StreamHandler()
         formatter = logging.Formatter(
             "[%(asctime)s] %(levelname)s - %(name)s - %(message)s",
             datefmt="%H:%M:%S",
         )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        # Console (útil rodando via Python)
+        stream = logging.StreamHandler()
+        stream.setFormatter(formatter)
+        logger.addHandler(stream)
+        # Arquivo (essencial no .exe --windowed, onde não há console)
+        try:
+            fh = logging.FileHandler(data_dir() / "aplayer.log", encoding="utf-8")
+            fh.setFormatter(formatter)
+            logger.addHandler(fh)
+        except OSError:
+            pass
     logger.setLevel(level)
     return logger

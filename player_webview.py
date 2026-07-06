@@ -74,8 +74,28 @@ def _on_loaded(window):
         pass
 
 
+def _from_registry(exe: str) -> str | None:
+    """Lê o caminho do navegador no registro (App Paths) — robusto a instalações
+    fora dos diretórios padrão."""
+    try:
+        import winreg
+    except ImportError:
+        return None
+    key = rf"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\{exe}"
+    for hive in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+        try:
+            with winreg.OpenKey(hive, key) as k:
+                path, _ = winreg.QueryValueEx(k, None)
+                if path and os.path.isfile(path):
+                    return path
+        except OSError:
+            continue
+    return None
+
+
 def _find_chromium() -> str | None:
-    """Localiza o Edge (ou Chrome) para abrir em modo app (janela sem abas)."""
+    """Localiza o Edge (ou Chrome) para abrir em modo app (janela sem abas).
+    Tenta caminhos padrão e, em seguida, o registro do Windows."""
     candidates = [
         os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
         os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"),
@@ -86,6 +106,11 @@ def _find_chromium() -> str | None:
     for path in candidates:
         if os.path.isfile(path):
             return path
+    # Fallback: registro (App Paths)
+    for exe in ("msedge.exe", "chrome.exe"):
+        found = _from_registry(exe)
+        if found:
+            return found
     return None
 
 

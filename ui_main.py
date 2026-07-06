@@ -1,6 +1,8 @@
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import (Qt, Slot, QPropertyAnimation, QEasingCurve,
+                            QAbstractAnimation)
 from PySide6.QtGui import QFont, QCursor
 from PySide6.QtWidgets import (
+    QGraphicsOpacityEffect,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -292,9 +294,23 @@ class MainWindow(QMainWindow):
                 cards.append(card)
             self._add_section("★  Favoritos", cards, AnimeCard.POSTER.width())
 
+    def _switch_to(self, page: QWidget):
+        """Troca de página com um fade-in suave. O efeito é removido ao fim,
+        para não interferir no relayout do grid (evita instabilidade)."""
+        self._stack.setCurrentWidget(page)
+        eff = QGraphicsOpacityEffect(page)
+        page.setGraphicsEffect(eff)
+        anim = QPropertyAnimation(eff, b"opacity", page)
+        anim.setDuration(240)
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        anim.finished.connect(lambda: page.setGraphicsEffect(None))
+        anim.start(QAbstractAnimation.DeletionPolicy.DeleteWhenStopped)
+
     def _go_home(self):
         self._render_home()
-        self._stack.setCurrentWidget(self._home_page)
+        self._switch_to(self._home_page)
         self._status.set_message("Pronto")
 
     # ------------------------------------------------------------------
@@ -345,7 +361,7 @@ class MainWindow(QMainWindow):
             self._home_layout.addWidget(lbl)
             self._home_layout.addStretch()
             self._status.set_message("Nenhum resultado — tente o nome em japonês", is_error=True)
-        self._stack.setCurrentWidget(self._home_page)
+        self._switch_to(self._home_page)
 
     # ------------------------------------------------------------------
     #  Episódios
@@ -381,7 +397,7 @@ class MainWindow(QMainWindow):
             cards.append(card)
         self._episodes_grid.set_cards(cards)
         self._status.set_message(f"{len(anime.episodes)} episódio(s) carregado(s)")
-        self._stack.setCurrentWidget(self._episodes_page)
+        self._switch_to(self._episodes_page)
 
     def _on_episode_selected(self, episode: EpisodeInfo):
         title = f"EP {episode.number}"

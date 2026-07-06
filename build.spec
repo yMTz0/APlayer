@@ -13,10 +13,12 @@ from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
 
-# Extensão de isolação do player (bundle: player_ext/ com manifest + scripts).
-_datas = [('player_ext', 'player_ext')]
+# Extensão de isolação do player + assets (logo).
+_datas = [('player_ext', 'player_ext'), ('assets', 'assets')]
 if os.path.exists('config.json'):
     _datas.append(('config.json', '.'))
+
+_icon = 'assets/logo.ico' if os.path.exists('assets/logo.ico') else None
 
 # curl_cffi traz um libcurl compilado (necessário p/ passar pelo Cloudflare/TLS).
 _cc_datas, _cc_binaries, _cc_hidden = collect_all('curl_cffi')
@@ -63,7 +65,7 @@ exe = EXE(
     strip=False,
     upx=True,
     console=False,
-    icon=None,
+    icon=_icon,
 )
 
 coll = COLLECT(

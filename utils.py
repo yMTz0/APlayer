@@ -19,6 +19,18 @@ USER_AGENTS = [
 CONFIG_PATH = Path(__file__).parent / "config.json"
 
 
+def resource_path(rel: str) -> str:
+    """Caminho de um recurso empacotado (assets), em dev e no .exe (sys._MEIPASS)."""
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, rel)
+
+
+def logo_path() -> str | None:
+    """Caminho do logo (assets/logo.png) se existir."""
+    p = resource_path(os.path.join("assets", "logo.png"))
+    return p if os.path.isfile(p) else None
+
+
 def data_dir() -> Path:
     """Diretório persistente de dados do usuário (favoritos, histórico).
     Usa %APPDATA%/APlayer no Windows; fallback para ~/.aplayer."""

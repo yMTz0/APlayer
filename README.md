@@ -1,9 +1,13 @@
-# ▶ APlayer — Media Center Desktop
+<p align="center">
+  <img src="assets/logo.png" width="180" alt="APlayer logo">
+</p>
+
+<h1 align="center">APlayer — Media Center Desktop</h1>
 
 Player de vídeo desktop modular em **Python + PySide6**, desenvolvido como projeto
 de portfólio acadêmico com foco em **engenharia de software, multithreading e
 automação de interfaces**. Tema visual **Frutiger Aero (dark mode)** — vidro fosco,
-gradientes aqua e acabamento glossy.
+gradientes aqua, acabamento glossy, tela de carregamento e transições animadas.
 
 > **Contexto acadêmico:** o site usado como fonte de mídia serve apenas como
 > ambiente de testes de integração e *parsing* de dados públicos (estruturas de

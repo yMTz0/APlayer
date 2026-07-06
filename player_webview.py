@@ -10,6 +10,7 @@ Blogger) e injeta CSS/JS para isolar o container do player, escondendo a
 navegação e os anúncios do site.
 """
 import os
+import subprocess
 import sys
 import traceback
 import webbrowser
@@ -73,12 +74,44 @@ def _on_loaded(window):
         pass
 
 
-def _open_in_browser(url: str):
-    """Fallback definitivo: abre o episódio no navegador padrão (que tem H.264).
-    Usado quando o WebView2/pywebview não inicializa (ex.: falha do pythonnet
-    no .exe empacotado)."""
+def _find_chromium() -> str | None:
+    """Localiza o Edge (ou Chrome) para abrir em modo app (janela sem abas)."""
+    candidates = [
+        os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
+        os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"),
+        os.path.expandvars(r"%LocalAppData%\Microsoft\Edge\Application\msedge.exe"),
+        os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def _open_app_window(url: str):
+    """Fallback confiável (sem pythonnet): abre o episódio numa janela dedicada
+    do Edge/Chrome em modo aplicativo (--app) — sem barra de endereço nem abas,
+    parecendo o player do app. Usa o mesmo motor Chromium (H.264) do WebView2."""
+    browser = _find_chromium()
+    if browser:
+        data_root = str(data_dir() / "player_profile")
+        try:
+            subprocess.Popen([
+                browser,
+                f"--app={url}",
+                "--window-size=1120,700",
+                f"--user-data-dir={data_root}",
+                "--no-first-run",
+                "--no-default-browser-check",
+            ])
+            logger.info("Player: aberto em janela de app (%s)", os.path.basename(browser))
+            return
+        except Exception as e:
+            logger.error("Player: falha ao abrir modo app (%s)", e)
+    # Último recurso: handler padrão do sistema.
     try:
-        os.startfile(url)  # Windows: abre no handler padrão (navegador)
+        os.startfile(url)
     except Exception:
         webbrowser.open(url)
 
@@ -109,7 +142,7 @@ def run(url: str, title: str):
         logger.error("Player: WebView2 FALHOU (%s: %s) — abrindo no navegador",
                      type(e).__name__, e)
         logger.error("Player traceback:\n%s", traceback.format_exc())
-        _open_in_browser(url)
+        _open_app_window(url)
 
 
 if __name__ == "__main__":
